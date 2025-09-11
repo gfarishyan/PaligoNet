@@ -21,6 +21,12 @@ class Configuration {
      */
   protected $instance;
 
+  public function __construct(string $username, string $api_key, string $instance) {
+    $this->username = $username;
+    $this->api_key = $api_key;
+    $this->instance = $instance;
+  }
+
   public function getUrl() {
       //paligoapp.com/api/v2
      return sprintf('https://%s.paligo.com/api/v2', $this->instance);
