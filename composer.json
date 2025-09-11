@@ -1,0 +1,19 @@
+{
+    "name": "gfarishyan/paligo_net",
+    "description": "provides paligo.net client library",
+    "type": "library",
+    "require": {
+        "guzzlehttp/guzzle": "^7"
+    },
+    "autoload": {
+        "psr-4": {
+            "Gfarishyan\\PaligoNet\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Grigor Farishyan",
+            "email": "farishyan@gmail.com"
+        }
+    ]
+}
