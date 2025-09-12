@@ -1,5 +1,5 @@
 {
-    "name": "gfarishyan/paligo_net",
+    "name": "gfarishyan/paligonet",
     "description": "provides paligo.net client library",
     "type": "library",
     "require": {
