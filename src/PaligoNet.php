@@ -2,6 +2,7 @@
 
 namespace Gfarishyan\PaligoNet;
 
+use Gfarishyan\PaligoNet\Models\Folder;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Psr\Http\Client\ClientInterface;
@@ -17,7 +18,7 @@ class PaligoNet {
       $this->configuration = $configuration;
       $this->client = new Client([
           'base_uri' => $this->configuration->getUrl(),
-          'auth' => [$this->configuration->getUsername(), $this->configuration->getApiKey(), 'basic']
+          'auth' => [$this->configuration->getUsername(), $this->configuration->getApiKey(), 'basic'],
       ]);
   }
 
@@ -42,7 +43,16 @@ class PaligoNet {
         $filter['parent'] = $filters['parent'];
       }
 
-      $folders = $this->getResource($endpoint, $filter, $paginate);
+      $resources = $this->getResource($endpoint, 'folders', $filter, $paginate);
+
+      if (empty($resources)) {
+          return [];
+      }
+
+      foreach ($resources as $resource) {
+        $folders[] = new Folder($resource);
+      }
+
       return $folders;
     }
 
@@ -66,7 +76,7 @@ class PaligoNet {
      * @return void
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
-  public function getResource($endpoint, $filter = [], $paginate = true) {
+  public function getResource($endpoint, $resource_type, $filter = [], $paginate = true) {
     $resources = [];
     $delta = 0;
     do {
@@ -77,9 +87,13 @@ class PaligoNet {
         if ($response->getHeader('Retry-After')) {
           $sleep_seconds = $response->getHeader('Retry-After');
         }
-        $response_content = $response->getBody()->getContents();
-        if (!empty($response_content['resources'])) {
-          $resources = array_merge($resources, $response_content['resources']);
+        $contents = $response->getBody()->getContents();
+        if (!empty($contents)) {
+          $response_content = json_decode($contents, true);
+        }
+
+        if (!empty($response_content[$resource_type])) {
+          $resources = array_merge($resources, $response_content[$resource_type]);
         }
       } catch (RequestException $e) {
           throw new \Exception($e->getMessage(), $e->getCode());

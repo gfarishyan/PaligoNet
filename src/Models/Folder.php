@@ -33,5 +33,9 @@ class Folder extends Model {
    */
   protected $children;
 
+  public function hasChildren() {
+      return (isset($this->children) && !empty($this->children));
+  }
+
 
 }

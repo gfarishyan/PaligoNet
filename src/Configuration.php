@@ -29,7 +29,9 @@ class Configuration {
 
   public function getUrl() {
       //paligoapp.com/api/v2
-     return sprintf('https://%s.paligo.com/api/v2', $this->instance);
+
+     //return sprintf('https://%s.paligo.com/api/v2/', $this->instance);
+     return sprintf('https://%s.paligoapp.com/api/v2/', $this->instance);
   }
 
   public function getUsername() :string {
