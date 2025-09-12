@@ -106,6 +106,8 @@ class PaligoNet {
 
       if (!empty($response_content['next_page'])) {
         $filter['page']++;
+      } else {
+          $paginate = false;
       }
     } while($paginate);
 
