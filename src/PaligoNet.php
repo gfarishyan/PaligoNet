@@ -2,6 +2,7 @@
 
 namespace Gfarishyan\PaligoNet;
 
+use Gfarishyan\PaligoNet\Models\Document;
 use Gfarishyan\PaligoNet\Models\Folder;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
@@ -60,14 +61,96 @@ class PaligoNet {
      * @method listDocuments.
      * retrieve list of documents based on specified filter.
      */
-  public function listDocuments($filter = []) {
+  public function listDocuments($filter = [], $page = 1, $per_page = 50, $paginate = true) {
     $filter += [
       'per_page' => 50,
       'page' => 1
     ];
 
+    if (!empty($filter['created'])) {
+      if (!empty($filter['created']['start'])) {
+        $filter['created_start_at'] = $this->getUnixtTimestamp($filter['created']['start']);
+      }
+
+      if (!empty($filter['created']['end'])) {
+        $filter['created_end_at'] = $this->getUnixtTimestamp($filter['created']['end']);
+      }
+      unset($filter['created']);
+    }
+
+    if (!empty($filter['modified'])) {
+      if (!empty($filter['modified']['start'])) {
+        $filter['modified_at'] = $this->getUnixtTimestamp($filter['modified']['start']);
+      }
+
+      if (!empty($filter['modified']['end'])) {
+        $filter['modified_at_end'] = $this->getUnixTimestamp($filter['modified']['end']);
+      }
+      unset($filter['modified']);
+    }
+
+    //to list documents we need to get folder
+    $resource = $this->getResource('documents', 'documents', $filter, $paginate);
+    if (empty($resource)) {
+      return [];
+    }
   }
 
+  public function getDocument($document_id): ?Document {
+    $resource = $this->getResource('documents/' . $document_id, null);
+
+    if (empty($resource)) {
+        return null;
+    }
+
+    return new Document($resource);
+  }
+
+  public function getFolder($folderId): ?Folder {
+    $endpoint = 'folders/' . $folderId;
+    $resource = $this->getResource($endpoint, 'folder');
+
+    if (empty($resource)) {
+      return null;
+    }
+
+    $children = !empty($resource['children']) ? $resource['children'] : [];
+    unset($resource['children']);
+    $folder = new Folder($resource);
+
+    if (!empty($children)) {
+      $childrens = [];
+      foreach ($children as $child) {
+         if ($child['type'] == 'folder') {
+           $childrens[] = new Folder($child);
+         } elseif ($child['type'] == 'document' || $child['type'] == 'publication' || $child['type'] == 'topic') {
+             $childrens[] = new Document($child);
+         }
+      }
+
+      if (!empty($childrens)) {
+        $folder->set('children', $childrens);
+      }
+    }
+
+    return $folder;
+  }
+
+    /**
+     * @param $time_string
+     * @return int
+     */
+  public function getUnixtTimestamp($time_string): ?int {
+    if ($time_string instanceof \DateTime) {
+      return $time_string->getTimestamp();
+    }
+
+    if (is_numeric($time_string)) {
+      return (int) $time_string;
+    }
+
+    return strtotime($time_string);
+  }
     /**
      * Main get request.
      * @param $endpoint
@@ -76,7 +159,7 @@ class PaligoNet {
      * @return void
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
-  public function getResource($endpoint, $resource_type, $filter = [], $paginate = true) {
+  public function getResource($endpoint, $resource_type=null, $filter = [], $paginate = true) {
     $resources = [];
     $delta = 0;
     do {
@@ -92,8 +175,9 @@ class PaligoNet {
           $response_content = json_decode($contents, true);
         }
 
-        if (!empty($response_content[$resource_type])) {
-          $resources = array_merge($resources, $response_content[$resource_type]);
+        if (!empty($response_content)) {
+          $content = $resource_type ? $response_content[$resource_type] : $response_content;
+          $resources = array_merge($resources, $content);
         }
       } catch (RequestException $e) {
           throw new \Exception($e->getMessage(), $e->getCode());
@@ -107,7 +191,7 @@ class PaligoNet {
       if (!empty($response_content['next_page'])) {
         $filter['page']++;
       } else {
-          $paginate = false;
+        $paginate = false;
       }
     } while($paginate);
 
