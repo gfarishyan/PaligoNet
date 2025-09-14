@@ -94,6 +94,13 @@ class PaligoNet {
     if (empty($resource)) {
       return [];
     }
+
+    $documents = [];
+
+    foreach ($resource as $document) {
+      $documents[] = new Document($document);
+    }
+    return $documents;
   }
 
   public function getDocument($document_id): ?Document {
