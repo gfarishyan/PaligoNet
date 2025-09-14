@@ -2,6 +2,8 @@
 
 namespace Gfarishyan\PaligoNet\Models;
 
+use XMLReader;
+
 class Document extends Model {
 
     /**
@@ -27,6 +29,12 @@ class Document extends Model {
      * The type of resource
      */
     protected string $type;
+
+    /**
+     * Document subtype
+     * @var string
+     */
+    protected ?string $subtype;
 
     /**
      * @var int creator
@@ -102,4 +110,30 @@ class Document extends Model {
      */
 
     protected $custom_attributes;
+
+
+    /**
+     * Cleanup content from xml and return original
+     */
+    public function getOriginalContent() {
+      if (empty($this->content)) {
+        return null;
+      }
+
+      try {
+        $reader = XmlReader::XML($this->content);
+        //most probably this is a simple screen
+        if (!$reader->isValid()) {
+            $reader->close();
+            return $this->content;
+        }
+
+        //let's loop over xml document and create domdocument
+
+
+      } catch (\Exception $e) {
+
+      }
+      return $this->content;
+    }
 }
