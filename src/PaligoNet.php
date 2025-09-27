@@ -24,6 +24,68 @@ class PaligoNet {
   }
 
     /**
+     * Wrapper for paligo /search endpoint.
+     * src https://api.paligo.net/en/index-en.html#UUID-ee4c04d6-2cce-9bb6-ea2d-551e783b949a
+     * @param $filters
+     *    list of filters described as paligo search
+     *    filter structure
+     *    the keys of filter are property names while values are array of
+     *      operator and value to search for.
+     *    e.g.
+     *     $filters = ['created_at' => [['>=', 'abc']]
+     *
+     * @param $page
+     * @param $per_page
+     * @param $paginate
+     * @return void
+     */
+
+  public function searchDocuments($filters = [], $page=1, $per_page=50, $paginate=true) {
+     if (empty($filters)) {
+         throw new \Exception("Filters is required for document search");
+     }
+     $data = [
+         'per_page' => $per_page,
+         'page' => $page,
+         'resource' => 'documents',
+         'where' => [],
+     ];
+
+     foreach ($filters as $property => $conditions) {
+         foreach ($conditions as $condition) {
+             $op = match ($condition[0]) {
+                 'equils', 'eq', '=' => 'equals',
+                 'has' => 'has',
+                 'before', '<=', '<' => 'before',
+                 'after', '>=', '>' => 'after',
+                 'between' => 'between',
+                 default => '',
+             };
+
+             if (empty($op)) {
+                 throw new \Exception("Filter $property does not have property condition operator");
+             }
+
+             if ($op == 'between' && !is_array($condition[1])) {
+                 throw new \Exception("$property - Between operator requires array of values.");
+             }
+
+             $data['where'][] = [
+                 'property' => $property,
+                 'operator' => $op,
+                 'value' => $condition[1],
+             ];
+         }
+     }
+
+     if (empty($data['where'])) {
+         throw new \Exception("Search endpoint requires filters.");
+     }
+     $response = $this->postResource('search', 'items', $data, $paginate);
+     return $response;
+  }
+
+    /**
      * @method listFolders().
      * Return list of folders.
      * @param
@@ -186,6 +248,13 @@ class PaligoNet {
           $content = $resource_type ? $response_content[$resource_type] : $response_content;
           $resources = array_merge($resources, $content);
         }
+
+
+        if (!empty($response_content['next_page'])) {
+          $filter['page']++;
+        } else {
+          $paginate = false;
+        }
       } catch (RequestException $e) {
           throw new \Exception($e->getMessage(), $e->getCode());
       }
@@ -194,14 +263,62 @@ class PaligoNet {
         $sleep_seconds += 10; //add at least 10 seconds gap to retry
         sleep($sleep_seconds);
       }
-
-      if (!empty($response_content['next_page'])) {
-        $filter['page']++;
-      } else {
-        $paginate = false;
-      }
     } while($paginate);
 
     return $resources;
   }
+
+    /**
+     *
+     * @param $endpoint
+     * @param $resource_type
+     * @param $paginate
+     * @return void
+     */
+  public function postResource($endpoint, $resource_type = null, array $body = [], $paginate = false) {
+      $resources = [];
+      $delta = 0;
+      do {
+          $json = json_encode($body);
+          $sleep_seconds = 0;
+          $response_content = [];
+          try {
+              $response = $this->client->post($endpoint, [
+                  'body' => $json
+              ]);
+
+              if ($response->getHeader('Retry-After')) {
+                  $sleep_seconds = $response->getHeader('Retry-After');
+              }
+              $contents = $response->getBody()->getContents();
+              if (!empty($contents)) {
+                  $response_content = json_decode($contents, true);
+              }
+
+              if (!empty($response_content)) {
+                  $content = $resource_type ? $response_content[$resource_type] : $response_content;
+                  $resources = array_merge($resources, $content);
+              }
+
+              if (!empty($response_content['total_pages'])) {
+                  $body['page']++;
+                  if ($body['page'] > $response_content['total_pages']) {
+                      $paginate = false;
+                  }
+              } else {
+                  $paginate = false;
+              }
+          } catch (RequestException $e) {
+              throw new \Exception($e->getMessage(), $e->getCode());
+          }
+
+          if ($sleep_seconds && $paginate) {
+              $sleep_seconds += 10; //add at least 10 seconds gap to retry
+              sleep($sleep_seconds);
+          }
+      } while($paginate);
+
+      return $resources;
+  }
+
 }
