@@ -14,6 +14,7 @@ class Model {
             }
         }
     }
+    
     public function get($name) {
       if (!property_exists($this, $name)) {
           throw new \Exception("Property $name does not exist");

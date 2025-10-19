@@ -112,6 +112,7 @@ class Document extends Model {
     protected $custom_attributes;
 
 
+    protected $release_status;
     /**
      * Cleanup content from xml and return original
      */
