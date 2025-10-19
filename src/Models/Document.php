@@ -5,6 +5,14 @@ namespace Gfarishyan\PaligoNet\Models;
 use XMLReader;
 
 class Document extends Model {
+    public function __construct($model_props = []) {
+        if (isset($model_props['languages'])) {
+            if (is_string($model_props['languages'])) {
+                $model_props['languages'] = json_decode($model_props['languages']);
+            }
+        }
+        parent::__construct($params);
+    }
 
     /**
      * @var int id
