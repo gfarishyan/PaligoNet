@@ -194,7 +194,7 @@ class PaligoNet {
          if ($child['type'] == 'folder') {
            $childrens[] = new Folder($child);
          } elseif ($child['type'] == 'document' || $child['type'] == 'publication' || $child['type'] == 'topic') {
-             $childrens[] = new Document($child);
+           $childrens[] = new Document($child);
          }
       }
 

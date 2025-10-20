@@ -11,7 +11,7 @@ class Document extends Model {
                 $model_props['languages'] = json_decode($model_props['languages']);
             }
         }
-        parent::__construct($params);
+        parent::__construct($model_props);
     }
 
     /**
