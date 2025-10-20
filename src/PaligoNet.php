@@ -4,6 +4,7 @@ namespace Gfarishyan\PaligoNet;
 
 use Gfarishyan\PaligoNet\Models\Document;
 use Gfarishyan\PaligoNet\Models\Folder;
+use Gfarishyan\PaligoNet\Models\Variable;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Psr\Http\Client\ClientInterface;
@@ -203,6 +204,29 @@ class PaligoNet {
     }
 
     return $folder;
+  }
+
+  public function listVariableValues($filter = [], $page = 1, $per_page = 50, $paginate = true)
+  {
+      $filter += [
+          'per_page' => 50,
+          'page' => 1
+      ];
+      $resource = $this->getResource('variablevalues', 'variablevalues', $filter, $paginate);
+      if (empty($resource)) {
+          return [];
+      }
+
+      $variables = [];
+
+      foreach ($resource as $variable) {
+          if ($variable['type'] == 'image') {
+              continue;
+          }
+          $var = new Variable($variable);
+          $variables[] = $var;
+      }
+      return $variables;
   }
 
     /**
