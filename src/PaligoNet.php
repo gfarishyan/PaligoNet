@@ -82,7 +82,16 @@ class PaligoNet {
      if (empty($data['where'])) {
          throw new \Exception("Search endpoint requires filters.");
      }
+     
      $response = $this->postResource('search', 'items', $data, $paginate);
+     $documents = [];
+     if ($response) {
+         foreach ($response as $document) {
+            $documents[] = new Document($document);
+         }
+         return $documents;
+     }
+     
      return $response;
   }
 
@@ -227,6 +236,43 @@ class PaligoNet {
           $variables[] = $var;
       }
       return $variables;
+  }
+
+    /**
+     * get translation export status
+     * @param $id
+     * @return array|null
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     */
+  public function getTranslationExportStatus($id) {
+    return $this->getResource('translationexports/' . $id, null, [], false);
+  }
+
+  public function downloadTranslationExport($url, $destination) {
+    return $this->client->request('GET', $url, [
+        'sink' => $destination,
+    ]);
+  }
+
+    /**
+     * Generates translation for document.
+     * @param $document_id
+     * @return void
+     */
+  public function createTranslationExport($document_id, $src_language, $target_languages) {
+    $export = [
+        'document' => $document_id,
+        'source' => $src_language,
+        'target' => $target_languages,
+        'format' => 'xliff',
+        'approved' => true,
+        'fuzzy' => false,
+        'force' => false,
+        'preview' => false,
+        'varinfo' => true,
+    ];
+    $response = $this->postResource('translationexports', null, $export);
+    return $response;
   }
 
     /**
