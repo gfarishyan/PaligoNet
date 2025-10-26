@@ -31,7 +31,50 @@ class Folder extends Model {
    * @var array $children
    * The folder's child folders.
    */
-  protected $children;
+  protected array $children;
+
+  public function __construct(array $attributes = []) {
+    $this->children = [];
+    if (isset($attributes['children'])) {
+      if (is_array($attributes['children'])) {
+        //verify that each child converted to object
+        foreach ($attributes['children'] as &$child) {
+           if (is_array($child)) {
+              if ($child['type'] == 'folder') {
+                $child = new Folder($child);
+              } else {
+                $child = new Document($child);
+              }
+           }
+        }
+      }
+    }
+    parent::__construct($attributes);
+  }
+
+  public function getId() {
+      return $this->id;
+  }
+
+  public function getName() {
+      return $this->name;
+  }
+
+  public function getUuid() {
+      return $this->uuid;
+  }
+
+  public function getType() {
+      return $this->type;
+  }
+
+  public function getChildren() {
+      if ($this->hasChildren()) {
+          return $this->children;
+      }
+
+      return [];
+  }
 
   public function hasChildren() {
     return (isset($this->children) && !empty($this->children));
