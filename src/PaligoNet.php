@@ -4,6 +4,7 @@ namespace Gfarishyan\PaligoNet;
 
 use Gfarishyan\PaligoNet\Models\Document;
 use Gfarishyan\PaligoNet\Models\Folder;
+use Gfarishyan\PaligoNet\Models\TranslationExport;
 use Gfarishyan\PaligoNet\Models\Variable;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
@@ -82,8 +83,12 @@ class PaligoNet {
      if (empty($data['where'])) {
          throw new \Exception("Search endpoint requires filters.");
      }
-     
-     $response = $this->postResource('search', 'items', $data, $paginate);
+     try {
+       $response = $this->postResource('search', 'items', $data, $paginate);
+     } catch (RequestException $e) {
+
+     }
+
      $documents = [];
      if ($response) {
          foreach ($response as $document) {
@@ -119,7 +124,7 @@ class PaligoNet {
       $resources = $this->getResource($endpoint, 'folders', $filter, $paginate);
 
       if (empty($resources)) {
-          return [];
+        return [];
       }
 
       foreach ($resources as $resource) {
@@ -127,6 +132,43 @@ class PaligoNet {
       }
 
       return $folders;
+    }
+
+    public function browseFolder($folder_id, $page = 1, $per_page = 50, $paginate = true) {
+       $endpoint = 'folders/' . $folder_id;
+       $filter = [
+         'page' => $page,
+         'per_page' => $per_page,
+       ];
+
+       try {
+         $resource = $this->getResource($endpoint, ($folder_id == 0 ? 'folders' : null), $filter, $paginate);
+       } catch (\Exception $e) {
+           throw new \Exception($e->getMessage(), $e->getCode());
+       }
+
+       if (empty($resource)) {
+         return null;
+       }
+
+       /*
+        * when we try to browse root folder we should take into account
+        * it does not have a id or anything
+        */
+       if ($folder_id == 0) {
+         $folders = [];
+         foreach ($resource as $folder) {
+            if ($folder['type'] == 'folder') {
+                $folders[] = new Folder($folder);
+            } else {
+                $folders[] = new Document($folder);
+            }
+         }
+
+         return $folders;
+       }
+
+       return new Folder($resource);
     }
 
     /**
@@ -245,7 +287,12 @@ class PaligoNet {
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
   public function getTranslationExportStatus($id) {
-    return $this->getResource('translationexports/' . $id, null, [], false);
+    $resonse = $this->getResource('translationexports/' . $id, null, [], false);
+    if (empty($resource)) {
+      return null;
+    }
+
+    return new TranslationExport($resource);
   }
 
   public function downloadTranslationExport($url, $destination) {
@@ -273,6 +320,54 @@ class PaligoNet {
     ];
     $response = $this->postResource('translationexports', null, $export);
     return $response;
+  }
+
+  public function createTranslationImport($document_id, $target_language, $filename) {
+    //we should send with multipart form data.
+
+    $fp = fopen($filename, 'rb');
+    $size = filesize($filename);
+    $content = fread($fp, $size);
+    fclose($fp);
+    $body = [
+      'document' => $document_id,
+      'target' => [$target_language],
+      'honor_status' => 'true',
+      'translation' => $content,
+      'force' => 'false',
+    ];
+
+      $body_opt = [
+        [
+            'name' => 'document',
+            'contents' => $document_id,
+        ],
+          [
+              'name' => 'target',
+              'contents' => $target_language,
+          ],
+          [
+              'name' => 'honor_status',
+              'contents' => 'true',
+          ],
+          [
+              'name' => 'force',
+              'contents' => 'false',
+          ],
+          [
+              'name' => 'translation',
+              'contents' => fopen($filename, 'r'),
+              'filename' => basename($filename),
+          ]
+      ];
+      $response = $this->client->post('translationimports', [
+          'multipart' => $body_opt,
+          'debug' => true,
+      ]);
+
+      return $response;
+
+    //return $this->postResource('translationimports', null, $body);
   }
 
     /**
@@ -354,11 +449,14 @@ class PaligoNet {
           $response_content = [];
           try {
               $response = $this->client->post($endpoint, [
+                  'headers' => [
+                     'Content-Type' => 'multipart/form-data',
+                  ],
                   'body' => $json
               ]);
 
               if ($response->getHeader('Retry-After')) {
-                  $sleep_seconds = $response->getHeader('Retry-After');
+                $sleep_seconds = $response->getHeader('Retry-After');
               }
               $contents = $response->getBody()->getContents();
               if (!empty($contents)) {
