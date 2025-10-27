@@ -288,11 +288,11 @@ class PaligoNet {
      */
   public function getTranslationExportStatus($id) {
     $resonse = $this->getResource('translationexports/' . $id, null, [], false);
-    if (empty($resource)) {
+    if (empty($resonse)) {
       return null;
     }
 
-    return new TranslationExport($resource);
+    return new TranslationExport($resonse);
   }
 
   public function downloadTranslationExport($url, $destination) {
